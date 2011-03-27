@@ -15,10 +15,11 @@
  *
  * @package yuki
  * @subpackage forms
+ * @uses yHtmlTag
  * @author olamedia
  * @license http://www.opensource.org/licenses/mit-license.php MIT
  */
-class yFormControl{
+class yFormControl extends yHtmlTag{
     /**
      * Prefix of the input name
      * null:        name="name"
@@ -39,76 +40,174 @@ class yFormControl{
      * @var string Default null
      */
     protected $_key = null;
+    protected $_uniqId = null;
     protected $_value = null;
+    protected $_label = null;
+    protected $_help = '';
+    protected $_validator = null;
+    protected $_isRequired = false;
+    public function __construct($name = 'input', $attr = array()){
+        parent::__construct($name, $attr);
+        $this->_label = new yHtmlTag('label');
+    }
+    protected function _getId(){
+        if ($this->_key !== null && $this->_key !== true){
+            return $this->_key;
+        }
+        if ($this->_uniqId === null){
+            $this->_uniqId = ++self::$_ai;
+        }
+        return $this->_uniqId;
+    }
+    protected function _getFullName(){
+        return ($this->_prefix === null?'':$this->_prefix.'_').$this->_name;
+    }
+    protected function _getFullKey(){
+        return ($this->_key === null?
+                '':
+                ($this->_key === true?
+                        '[]':
+                        (is_int($this->_key)?
+                                '['.$this->_key.']':
+                                "['".str_replace("'", "\\'", $this->_key)."']"
+                        )
+                )
+        );
+    }
+    protected static $_ai = 0;
+    protected function _getFullKeyId(){
+        return ($this->_key === null?
+                '':
+                '-'.$this->_getId()
+        );
+    }
+    protected function _getHtmlName(){
+        return $this->_getFullName().$this->_getFullKey();
+    }
+    protected function _getHtmlId(){
+        return $this->_getFullName().$this->_getFullKeyId();
+    }
+    protected function _updateName(){
+        $this->setAttribute('id', $this->_getHtmlId());
+        $this->setAttribute('name', $this->_getHtmlName());
+    }
     /**
      * Sets name prefix.
-     * @param string $prefix 
+     * @param string $prefix Name prefix
      * @return yFormControl
      */
     public function setPrefix($prefix){
         $this->_prefix = $prefix;
+        $this->_updateName();
         return $this;
     }
     /**
-     * Gets name prefix
-     * @return string
+     * Gets name prefix.
+     * @return mixed Name prefix string or null
      */
     public function getPrefix(){
         return $this->_prefix;
     }
     /**
      * Sets input name.
-     * @param string $name
+     * @param string $name Input name
      * @return yFormControl
      */
     public function setName($name){
         $this->_name = $name;
+        $this->_updateName();
         return $this;
     }
     /**
      * Gets input name.
-     * @return string
+     * @return string Input name
      */
     public function getName(){
         return $this->_name;
     }
+    /**
+     * Sets help message.
+     * @param string $help Help message.
+     * @return yFormControl
+     */
+    public function setHelpHtml($help){
+        $this->_help = $help;
+        return $this;
+    }
+    /**
+     * Sets help message.
+     * @param string $help Help message.
+     * @return yFormControl
+     */
+    public function setHelpText($help){
+        $this->_help = new yTextNode($help);
+        return $this;
+    }
+    /**
+     * Gets help message.
+     * @return string Help message.
+     */
+    public function getHelpHtml(){
+        return $this->_help;
+    }
+    /**
+     * Sets input key.
+     * @param mixed $key Input key
+     * @return yFormControl
+     */
     public function setKey($key){
         $this->_key = $key;
+        $this->_updateName();
+        return $this;
     }
+    /**
+     * Gets input key.
+     * @return mixed Input key
+     */
     public function getKey(){
         return $this->_key;
     }
+    public function getKeys(){
+        
+    }
     public function setValue($value){
-        $this->_value = $value;
+        $this->setAttribute('value', $value);
+        return $this;
     }
     public function getValue(){
-        return $this->_value;
+        return $this->getAttribute('value');
     }
-    public function getFullName(){
-        return ($this->_prefix === null?'':$this->_prefix.'_').$this->_name;
+    public function setRequired($required = true){
+        $this->_isRequired = true;
+        return $this;
     }
-    public function getHtmlName(){
-        return $this->getFullName().
-        ($this->_key === null?'':'['.$this->_key.']');
+    public function isRequired(){
+        return $this->_isRequired;
     }
-    public function processPost(){
-        if (isset($_POST[$this->_name])){
+    public function setLabelText($text){
+        $this->_label->setText($text);
+        return $this;
+    }
+    public function setLabelHtml($html){
+        $this->_label->setText('');
+        $this->_label->appendChild($html);
+        return $this;
+    }
+    /**
+     * @return yHtmlTag
+     */
+    public function getLabel(){
+        $this->_label['for'] = $this->getAttribute('id');
+        return $this->_label;
+    }
+    public function processKey(){
+        if (isset($_POST[$this->_getFullName()])){
             if ($this->_key === null){
-                $this->_value = $_POST[$this->_name];
+                $this->setValue($_POST[$this->_getFullName()]);
             }else{
-                $this->_value = $_POST[$this->_name][$this->_key];
+                $this->setValue($_POST[$this->_getFullName()][$this->_key]);
             }
         }
-    }
-    public function getHtml(){
-        return '<input type="text" name="'.
-        $this->_name.
-        '" value="'.
-        htmlspecialchars($this->_value).
-        '" />';
-    }
-    public function __toString(){
-        return $this->getHtml();
     }
 }
 
